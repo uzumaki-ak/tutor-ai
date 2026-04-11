@@ -34,6 +34,19 @@ export interface RubricDimension {
   feedback: string; // short explanation
 }
 
+// Per-turn rubric score (internal aggregation, not shown to candidate UI)
+export interface TurnScore {
+  turnNumber: number;
+  dimensions: {
+    clarity: RubricDimension;
+    warmth: RubricDimension;
+    simplicity: RubricDimension;
+    patience: RubricDimension;
+    fluency: RubricDimension;
+  };
+  overallScore: number;
+}
+
 // Full assessment result
 export interface AssessmentResult {
   candidateName: string;
@@ -64,6 +77,7 @@ export interface ChatResponse {
   message: string;
   provider: LLMProvider;
   isLastQuestion: boolean;
+  turnScore?: TurnScore;
 }
 
 // API response shape from /api/transcribe
@@ -74,6 +88,7 @@ export interface TranscribeResponse {
 // API response shape from /api/evaluate
 export interface EvaluateResponse {
   result: AssessmentResult;
+  warning?: string;
 }
 
 // Supabase DB row shape

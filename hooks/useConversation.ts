@@ -3,7 +3,7 @@
 // Manages question turns, transcription, AI responses, and completion
 
 import { useCallback, useState } from "react";
-import { CandidateInfo, ConversationTurn, AssessmentResult, ChatResponse } from "@/types";
+import { CandidateInfo, ConversationTurn, AssessmentResult, ChatResponse, TurnScore } from "@/types";
 
 export type ConversationPhase =
   | "not-started"
@@ -39,6 +39,7 @@ export function useConversation(): UseConversationReturn {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [candidate, setCandidate] = useState<CandidateInfo | null>(null);
   const [awaitingEvaluation, setAwaitingEvaluation] = useState(false);
+  const [turnScores, setTurnScores] = useState<TurnScore[]>([]);
 
   // Add a turn to history
   const addTurn = useCallback((role: "user" | "assistant", content: string) => {
@@ -52,6 +53,7 @@ export function useConversation(): UseConversationReturn {
       setHistory([]);
       setQuestionNumber(1);
       setAwaitingEvaluation(false);
+      setTurnScores([]);
       setCurrentAIMessage(firstMessage);
       addTurn("assistant", firstMessage);
       setPhase("ai-speaking");
@@ -108,10 +110,12 @@ export function useConversation(): UseConversationReturn {
           throw new Error(err.error ?? "Chat failed");
         }
 
-        const { message, isLastQuestion }: ChatResponse = await chatRes.json();
+        const { message, isLastQuestion, turnScore }: ChatResponse = await chatRes.json();
         addTurn("assistant", message);
         setCurrentAIMessage(message);
         setQuestionNumber((n) => Math.min(n + 1, TOTAL_QUESTIONS));
+        const latestTurnScores = turnScore ? [...turnScores, turnScore] : turnScores;
+        if (turnScore) setTurnScores(latestTurnScores);
 
         if (isLastQuestion) {
           // Step 3: Evaluate full transcript
@@ -128,6 +132,7 @@ export function useConversation(): UseConversationReturn {
                     ...updatedHistory,
                     { role: "assistant", content: message, timestamp: Date.now() },
                   ],
+                  turnScores: latestTurnScores,
                 }),
               });
 
@@ -161,7 +166,7 @@ export function useConversation(): UseConversationReturn {
         setPhase("error");
       }
     },
-    [candidate, history, addTurn]
+    [candidate, history, addTurn, turnScores]
   );
 
   const reset = useCallback(() => {
@@ -173,6 +178,7 @@ export function useConversation(): UseConversationReturn {
     setErrorMsg(null);
     setCandidate(null);
     setAwaitingEvaluation(false);
+    setTurnScores([]);
   }, []);
 
   return {

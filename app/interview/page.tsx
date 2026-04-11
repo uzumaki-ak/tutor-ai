@@ -16,6 +16,7 @@ import { ProgressBar } from "@/components/interview/ProgressBar";
 export default function InterviewPage() {
   const router = useRouter();
   const hasInit = useRef(false); // guard: prevent initInterview from running more than once
+  const completionRedirectedRef = useRef(false);
   const [isMuted, setIsMuted] = useState(false);
 
   // Read candidate once — stable ref, never changes
@@ -44,14 +45,27 @@ export default function InterviewPage() {
     if (!candidate) router.push("/");
   }, [candidate, router]);
 
-  // Redirect to completion screen when interview completes
+  // Redirect to completion only after final TTS is done (or timeout fallback),
+  // so the last AI sentence is not cut off.
   useEffect(() => {
-    if (phase === "completed" && result) {
-      window.speechSynthesis?.cancel();
+    if (phase !== "completed" || !result || completionRedirectedRef.current) return;
+
+    if (!isSpeaking || isMuted) {
+      completionRedirectedRef.current = true;
       sessionStorage.removeItem("result");
       router.push("/interview/complete");
+      return;
     }
-  }, [phase, result, router]);
+
+    const failSafe = window.setTimeout(() => {
+      if (completionRedirectedRef.current) return;
+      completionRedirectedRef.current = true;
+      sessionStorage.removeItem("result");
+      router.push("/interview/complete");
+    }, 15000);
+
+    return () => window.clearTimeout(failSafe);
+  }, [phase, result, isSpeaking, isMuted, router]);
 
   // Init interview exactly once — ref guard prevents re-runs when phase/deps change
   useEffect(() => {

@@ -84,3 +84,55 @@ IMPORTANT JSON RULES:
 - If a quote appears inside evidence/feedback/summary, use single quotes instead of unescaped double quotes.
 - No trailing commas, comments, or ellipses.`;
 }
+
+// Builds per-turn scoring prompt (single user answer) for incremental aggregation
+export function buildTurnScorerPrompt(
+  answer: string,
+  candidate: CandidateInfo,
+  turnNumber: number
+): string {
+  return `You are scoring ONE tutor interview answer for a soft-skills rubric.
+
+CANDIDATE: ${candidate.name}
+SUBJECT: ${candidate.subject}
+AGE GROUP: ${candidate.ageGroup}
+TURN NUMBER: ${turnNumber}
+
+ANSWER TO SCORE:
+${answer}
+
+Score only this answer on 5 dimensions with integer scores 1-5:
+- clarity
+- warmth
+- simplicity
+- patience
+- fluency
+
+For each dimension, include:
+- label
+- score
+- evidence (short quote from this answer only)
+- feedback (1 short sentence)
+
+Also include:
+- overallScore: average of the 5 scores, rounded to 1 decimal
+
+Return ONLY valid JSON in this exact shape:
+{
+  "turnNumber": number,
+  "overallScore": number,
+  "dimensions": {
+    "clarity": { "label": "Clarity of Explanation", "score": number, "evidence": "string", "feedback": "string" },
+    "warmth": { "label": "Warmth & Empathy", "score": number, "evidence": "string", "feedback": "string" },
+    "simplicity": { "label": "Ability to Simplify", "score": number, "evidence": "string", "feedback": "string" },
+    "patience": { "label": "Patience", "score": number, "evidence": "string", "feedback": "string" },
+    "fluency": { "label": "English Fluency", "score": number, "evidence": "string", "feedback": "string" }
+  }
+}
+
+IMPORTANT JSON RULES:
+- Raw JSON only.
+- No markdown.
+- Escape any inner double quotes inside string values.
+- No trailing commas.`;
+}
